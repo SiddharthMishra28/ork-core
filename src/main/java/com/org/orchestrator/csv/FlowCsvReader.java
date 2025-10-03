@@ -33,6 +33,9 @@ public class FlowCsvReader {
                     long projectId = Long.parseLong(getColumn(line, headers, "projectId"));
                     String accessToken = getColumn(line, headers, "accessToken");
                     String branch = getColumn(line, headers, "branch");
+                    if (branch == null || branch.isBlank()) {
+                        throw new IllegalArgumentException("Branch cannot be empty or blank for application: " + applicationName + ", projectId: " + projectId);
+                    }
                     String variablesAndValues = getColumn(line, headers, "variablesAndValues");
                     String artifactJobName = getColumn(line, headers, "artifactJobName");
                     String orderStr = getColumn(line, headers, "order");
