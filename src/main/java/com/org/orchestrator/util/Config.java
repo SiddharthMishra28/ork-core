@@ -11,8 +11,11 @@ public class Config {
     private int maxThreads = 10;
     private int pollInterval = 10; // seconds
     private String gitlabBaseUrl = "https://gitlab.com/api/v4";
+    private String projectRoot;
 
-    private Config() {}
+    private Config() {
+        this.projectRoot = System.getProperty("user.dir");
+    }
 
     public static Config fromArgs(String[] args) {
         Config config = new Config();
@@ -44,4 +47,5 @@ public class Config {
     public int getMaxThreads() { return maxThreads; }
     public int getPollInterval() { return pollInterval; }
     public String getGitlabBaseUrl() { return gitlabBaseUrl; }
+    public String getProjectRoot() { return projectRoot; }
 }

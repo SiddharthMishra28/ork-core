@@ -10,7 +10,11 @@ import com.org.orchestrator.util.Config;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.org.orchestrator.util.OutputEnvParser;
+import java.io.FileInputStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -57,6 +61,15 @@ public class CsvFlowWorker implements Supplier<ExecutionSummary> {
 
                 summary.addPipelineResult(new PipelineResult(pipelineId, status.getResult(), new HashMap<>(runtimeVars)));
 
+                // Check for and parse local output.env in target folder
+                Map<String, String> localOutputEnv = readLocalOutputEnv();
+                if (!localOutputEnv.isEmpty()) {
+                    log.info("Merging runtime vars from local output.env: {}", localOutputEnv);
+                    runtimeVars.putAll(localOutputEnv);
+                } else {
+                    log.debug("No local output.env found or parsed in target folder.");
+                }
+
                 if (!"success".equalsIgnoreCase(status.getResult())) {
                     log.error("Pipeline {} failed. Halting execution for CSV file: {}", pipelineId, csvPath);
                     break; // Stop processing this CSV if a pipeline fails
@@ -69,6 +82,21 @@ public class CsvFlowWorker implements Supplier<ExecutionSummary> {
         }
         log.info("Finished processing CSV file: {}. Final status: {}", csvPath, summary.getStatus());
         return summary;
+    }
+
+    private Map<String, String> readLocalOutputEnv() {
+        Path targetDir = Paths.get(cfg.getProjectRoot(), "target");
+        Path outputEnvFile = targetDir.resolve("output.env");
+        Map<String, String> localVars = new HashMap<>();
+
+        if (Files.exists(outputEnvFile) && Files.isRegularFile(outputEnvFile)) {
+            try (FileInputStream fis = new FileInputStream(outputEnvFile.toFile())) {
+                localVars.putAll(OutputEnvParser.parse(fis));
+            } catch (Exception e) {
+                log.warn("Failed to read or parse local output.env file at {}: {}", outputEnvFile, e.getMessage());
+            }
+        }
+        return localVars;
     }
 
     private Map<String, String> mergeRowVars(PipelineRow row, Map<String, String> runtime) {
