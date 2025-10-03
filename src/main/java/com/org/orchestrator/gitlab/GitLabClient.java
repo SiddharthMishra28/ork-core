@@ -94,44 +94,33 @@ public class GitLabClient {
     public Map<String, String> fetchOutputEnv(long projectId, long pipelineId, String artifactJobName, String accessToken, String artifactPath) throws IOException {
         log.info("Attempting to fetch artifact '{}' for job '{}' in pipeline {} (project {})", artifactPath, artifactJobName, pipelineId, projectId);
         long jobId = -1;
-        // ... (rest of the method remains the same, but the URL construction will use artifactPath)
-            List<JobInfo> jobs = listJobs(projectId, pipelineId, token);
-            Optional<JobInfo> targetJob = pickJobWithArtifacts(jobs, jobName);
+
+        try {
+            List<JobInfo> jobs = listJobs(projectId, pipelineId, accessToken);
+            Optional<JobInfo> targetJob = pickJobWithArtifacts(jobs, artifactJobName);
             if (targetJob.isEmpty()) {
-                log.warn("No suitable job with artifacts found for pipeline {}", pipelineId);
+                log.warn("No suitable job with artifacts found for pipeline {} with job name {}", pipelineId, artifactJobName);
                 return Collections.emptyMap();
             }
+            jobId = targetJob.get().getId();
 
-            long jobId = targetJob.get().getId();
-        String url = String.format("%s/projects/%d/jobs/%d/artifacts/raw/%s", gitlabBaseUrl, projectId, jobId, artifactPath);
-            HttpGet get = new HttpGet(artifactsUrl);
-            get.setHeader("PRIVATE-TOKEN", token);
+            String url = String.format("%s/projects/%d/jobs/%d/artifacts/raw/%s", baseUrl, projectId, jobId, artifactPath);
+            HttpGet get = new HttpGet(url);
+            get.setHeader("PRIVATE-TOKEN", accessToken);
 
             return http.execute(get, response -> {
                 if (response.getCode() != 200) {
-                    log.warn("Failed to download artifacts for job {}. Status: {}", jobId, response.getCode());
+                    log.warn("Failed to download artifact '{}' for job {}. Status: {}", artifactPath, jobId, response.getCode());
                     return Collections.emptyMap();
                 }
 
-                try (java.io.InputStream content = response.getEntity().getContent();
-                     java.util.zip.ZipInputStream zis = new java.util.zip.ZipInputStream(content)) {
-
-                    java.util.zip.ZipEntry entry;
-                    while ((entry = zis.getNextEntry()) != null) {
-                        if (!entry.isDirectory() && entry.getName().endsWith("output.env")) {
-                            log.info("Found '{}' in artifacts for job {}. Parsing.", entry.getName(), jobId);
-                            // The parser will close the stream, which is fine as we've found our file.
-                            return OutputEnvParser.parse(zis);
-                        }
-                        zis.closeEntry();
-                    }
+                try (java.io.InputStream content = response.getEntity().getContent()) {
+                    log.info("Found artifact '{}' for job {}. Parsing.", artifactPath, jobId);
+                    return OutputEnvParser.parse(content);
                 } catch (Exception e) {
-                    // This can happen if the stream is not a zip, etc.
-                    log.error("Failed to process artifacts zip stream for job {}. It might not be a valid zip file.", jobId, e);
+                    log.error("Failed to process artifact stream for job {}. Error: {}", jobId, e.getMessage());
+                    return Collections.emptyMap();
                 }
-
-                log.warn("Could not find 'output.env' in artifacts for job {}", jobId);
-                return Collections.emptyMap();
             });
         } catch (Exception e) {
             log.error("A critical error occurred during artifact fetching for pipeline {}: {}", pipelineId, e.getMessage());
