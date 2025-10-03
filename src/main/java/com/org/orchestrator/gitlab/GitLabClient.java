@@ -91,8 +91,10 @@ public class GitLabClient {
         }
     }
 
-    public Map<String, String> fetchOutputEnv(long projectId, long pipelineId, String jobName, String token) {
-        try {
+    public Map<String, String> fetchOutputEnv(long projectId, long pipelineId, String artifactJobName, String accessToken, String artifactPath) throws IOException {
+        log.info("Attempting to fetch artifact '{}' for job '{}' in pipeline {} (project {})", artifactPath, artifactJobName, pipelineId, projectId);
+        long jobId = -1;
+        // ... (rest of the method remains the same, but the URL construction will use artifactPath)
             List<JobInfo> jobs = listJobs(projectId, pipelineId, token);
             Optional<JobInfo> targetJob = pickJobWithArtifacts(jobs, jobName);
             if (targetJob.isEmpty()) {
@@ -101,7 +103,7 @@ public class GitLabClient {
             }
 
             long jobId = targetJob.get().getId();
-            String artifactsUrl = baseUrl + "/projects/" + projectId + "/jobs/" + jobId + "/artifacts";
+        String url = String.format("%s/projects/%d/jobs/%d/artifacts/raw/%s", gitlabBaseUrl, projectId, jobId, artifactPath);
             HttpGet get = new HttpGet(artifactsUrl);
             get.setHeader("PRIVATE-TOKEN", token);
 
