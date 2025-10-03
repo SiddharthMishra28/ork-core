@@ -21,6 +21,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import java.util.zip.ZipInputStream;
+
 public class GitLabClient {
     private static final Logger log = LoggerFactory.getLogger(GitLabClient.class);
     private final String baseUrl;
@@ -104,23 +106,33 @@ public class GitLabClient {
             }
             jobId = targetJob.get().getId();
 
-            String url = String.format("%s/projects/%d/jobs/%d/artifacts/raw/%s", baseUrl, projectId, jobId, artifactPath);
+            String url = String.format("%s/projects/%d/jobs/%d/artifacts", baseUrl, projectId, jobId);
             HttpGet get = new HttpGet(url);
             get.setHeader("PRIVATE-TOKEN", accessToken);
 
             return http.execute(get, response -> {
                 if (response.getCode() != 200) {
-                    log.warn("Failed to download artifact '{}' for job {}. Status: {}", artifactPath, jobId, response.getCode());
+                    log.warn("Failed to download artifact archive for job {}. Status: {}", jobId, response.getCode());
                     return Collections.emptyMap();
                 }
 
-                try (java.io.InputStream content = response.getEntity().getContent()) {
-                    log.info("Found artifact '{}' for job {}. Parsing.", artifactPath, jobId);
-                    return OutputEnvParser.parse(content);
+                try (java.io.InputStream content = response.getEntity().getContent();
+                     java.util.zip.ZipInputStream zis = new java.util.zip.ZipInputStream(content)) {
+
+                    java.util.zip.ZipEntry entry;
+                    while ((entry = zis.getNextEntry()) != null) {
+                        if (!entry.isDirectory() && entry.getName().equals(artifactPath)) {
+                            log.info("Found '{}' in artifacts for job {}. Parsing.", entry.getName(), jobId);
+                            return OutputEnvParser.parse(zis);
+                        }
+                        zis.closeEntry();
+                    }
                 } catch (Exception e) {
-                    log.error("Failed to process artifact stream for job {}. Error: {}", jobId, e.getMessage());
-                    return Collections.emptyMap();
+                    log.error("Failed to process artifacts zip stream for job {}. Error: {}", jobId, e);
                 }
+
+                log.warn("Could not find '{}' in artifacts for job {}", artifactPath, jobId);
+                return Collections.emptyMap();
             });
         } catch (Exception e) {
             log.error("A critical error occurred during artifact fetching for pipeline {}: {}", pipelineId, e.getMessage());
