@@ -110,9 +110,10 @@ public class GitLabClient {
             HttpGet get = new HttpGet(url);
             get.setHeader("PRIVATE-TOKEN", accessToken);
 
+            long finalJobId = jobId;
             return http.execute(get, response -> {
                 if (response.getCode() != 200) {
-                    log.warn("Failed to download artifact archive for job {}. Status: {}", jobId, response.getCode());
+                    log.warn("Failed to download artifact archive for job {}. Status: {}", finalJobId, response.getCode());
                     return Collections.emptyMap();
                 }
 
@@ -122,16 +123,16 @@ public class GitLabClient {
                     java.util.zip.ZipEntry entry;
                     while ((entry = zis.getNextEntry()) != null) {
                         if (!entry.isDirectory() && entry.getName().equals(artifactPath)) {
-                            log.info("Found '{}' in artifacts for job {}. Parsing.", entry.getName(), jobId);
+                            log.info("Found '{}' in artifacts for job {}. Parsing.", entry.getName(), finalJobId);
                             return OutputEnvParser.parse(zis);
                         }
                         zis.closeEntry();
                     }
                 } catch (Exception e) {
-                    log.error("Failed to process artifacts zip stream for job {}. Error: {}", jobId, e);
+                    log.error("Failed to process artifacts zip stream for job {}. Error: {}", finalJobId, e);
                 }
 
-                log.warn("Could not find '{}' in artifacts for job {}", artifactPath, jobId);
+                log.warn("Could not find '{}' in artifacts for job {}", artifactPath, finalJobId);
                 return Collections.emptyMap();
             });
         } catch (Exception e) {
