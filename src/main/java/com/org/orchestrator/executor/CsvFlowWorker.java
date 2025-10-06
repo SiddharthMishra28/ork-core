@@ -59,7 +59,7 @@ public class CsvFlowWorker implements Supplier<ExecutionSummary> {
                     log.warn("No output.env found or parsed for pipeline {}", pipelineId);
                 }
 
-                summary.addPipelineResult(new PipelineResult(pipelineId, status.getResult(), new HashMap<>(runtimeVars)));
+                summary.addPipelineResult(new PipelineResult(pipelineId, status.getResult(), new HashMap<>(runtimeVars), row.getAllVars()));
 
                 if (!"success".equalsIgnoreCase(status.getResult())) {
                     log.error("Pipeline {} failed. Halting execution for CSV file: {}", pipelineId, csvPath);
@@ -67,7 +67,7 @@ public class CsvFlowWorker implements Supplier<ExecutionSummary> {
                 }
             } catch (Exception e) {
                 log.error("A critical error occurred while processing a row for {}. Halting flow.", csvPath, e);
-                summary.addPipelineResult(new PipelineResult(-1, "ERROR: " + e.getMessage(), new HashMap<>(runtimeVars)));
+                summary.addPipelineResult(new PipelineResult(-1, "ERROR: " + e.getMessage(), new HashMap<>(runtimeVars), row.getAllVars()));
                 break;
             }
         }

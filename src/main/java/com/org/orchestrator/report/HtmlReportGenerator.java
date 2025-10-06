@@ -39,13 +39,14 @@ public class HtmlReportGenerator {
             for (ExecutionSummary s : summaries) {
                 sb.append("<div class='summary-box'>");
                 sb.append("<div class='summary-header'><h2>").append(s.getCsvName()).append(" &mdash; <span class='status-").append(s.getStatus()).append("'>").append(s.getStatus()).append("</span></h2></div>");
-                sb.append("<table><thead><tr><th>#</th><th>Pipeline ID</th><th>Status</th><th>Final Merged Variables</th></tr></thead><tbody>");
+                sb.append("<table><thead><tr><th>#</th><th>Pipeline ID</th><th>Status</th><th>Row Variables</th><th>Final Merged Variables</th></tr></thead><tbody>");
                 int i = 1;
                 for (PipelineResult pr : s.getPipelineResults()) {
                     sb.append("<tr>");
                     sb.append("<td>").append(i++).append("</td>");
                     sb.append("<td>").append(pr.getPipelineId() == -1 ? "N/A" : pr.getPipelineId()).append("</td>");
                     sb.append("<td>").append(pr.getStatus()).append("</td>");
+                    sb.append("<td><pre>").append(mapToString(pr.getRowVars())).append("</pre></td>");
                     sb.append("<td><pre>").append(mapToString(pr.getMergedVars())).append("</pre></td>");
                     sb.append("</tr>");
                 }

@@ -65,4 +65,15 @@ public class PipelineRow {
     public int getOrder() { return order; }
     public Map<String, String> getStaticVars() { return staticVars; }
     public Set<String> getDeclaredKeys() { return declaredKeys; }
+
+    public Map<String, String> getAllVars() {
+        Map<String, String> allVars = new HashMap<>();
+        allVars.put("applicationName", applicationName);
+        allVars.put("projectId", String.valueOf(projectId));
+        allVars.put("branch", branch);
+        allVars.put("artifactJobName", artifactJobName);
+        allVars.put("order", String.valueOf(order));
+        allVars.putAll(staticVars);
+        return allVars;
+    }
 }
